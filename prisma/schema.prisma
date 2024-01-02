@@ -6,6 +6,34 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Category {
+  id    Int     @id @default(autoincrement()) 
+  name  String  
+  order Int     
+
+  Menus Menu[]
+  // 카테고리 테이블과 1:N 관계.
+}
+
+model Menu {
+  id              Int      @id @default(autoincrement()) 
+  category_id     Int      
+  name            String  
+  order           Int
+  description     String 
+  image           String 
+  price           String 
+  status          Menu_Status @default(FOR_SALE)
+
+  Category Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  // 카테고리를 외래키로 참조 (메뉴테이블에 있는 category_id를 카테고리테이블에 있는 id로 참조 하고 cascade옵션 추가)
+}
+
+enum Menu_Status {
+  FOR_SALE
+  SOLD_OUT
 }
