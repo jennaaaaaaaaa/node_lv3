@@ -12,8 +12,8 @@ datasource db {
 
 model Category {
   id    Int     @id @default(autoincrement()) 
-  name  String      
   order Int     @unique
+  name  String  
 
   Menus Menu[]
   // 카테고리 테이블과 1:N 관계.
