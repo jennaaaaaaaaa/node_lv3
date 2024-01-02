@@ -12,7 +12,7 @@ datasource db {
 
 model Category {
   id    Int     @id @default(autoincrement()) 
-  order Int     
+  order Int     @unique
   name  String  
 
   Menus Menu[]
