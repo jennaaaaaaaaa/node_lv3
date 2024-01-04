@@ -32,7 +32,6 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
          throw { name: 'LessThenZero' };
       }
 
-      // req.body.image = req.file ? req.file.location : null;
 
       const lastOrder = await prisma.menu.findFirst({
          orderBy: {
@@ -49,7 +48,6 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
          data: {
             name,
             description,
-            // image,
             image: req.file.location,
             price,
             status: 'FOR_SALE',
@@ -61,8 +59,6 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
       return res.status(200).json({ message: '메뉴를 등록하였습니다' });
    } catch (error) {
       next(error);
-      // console.error(error);
-      // return res.status(500).json({ errorMessage: '서버에서 애러가 발생했습니다.' });
    }
 });
 
@@ -127,22 +123,6 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
       const menu = await prisma.menu.findFirst({ where: { id: +menuId } });
       if (!menu) throw { name: 'menuCastError' };
 
-      // const bodySchema = Joi.object({
-      //    name: Joi.string().min(1).required(),
-      //    description: Joi.string().min(1).required(),
-      //    price: Joi.string().min(1).required(),
-      //    order: Joi.number().integer().required(),
-      //    status: Joi.string().valid('FOR_SALE', 'SOLD_OUT').required(),
-      // });
-
-      // //비동기적으로 처리 안함
-      // const validation = bodySchema.validate(req.body);
-      // if (validation.error) {
-      //    return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
-      // }
-
-      // const { name, description, price, order, status } = req.body;
-
       const validation = await menuSchema.validateAsync(req.body);
       const { name, description, price, order, status } = validation;
 
@@ -196,3 +176,4 @@ router.delete('/categories/:categoryId/menus/:menuId', async (req, res, next) =>
 });
 
 export default router;
+
