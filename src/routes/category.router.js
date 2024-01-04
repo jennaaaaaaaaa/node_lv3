@@ -1,12 +1,19 @@
 import express from "express";
+import Joi from "joi";
 import { prisma } from "../utils/prisma/index.js";
 
 const router = express.Router();
+// 조이 유효성 검사 추가
+const schema = Joi.object({
+  name: Joi.string().min(2).max(20).required(),
+});
 
+// 조이를 통한 유효성 검사 및 에러 추가
 // 카테고리 등록 API
 router.post("/categories", async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const validation = await schema.validateAsync(req.body);
+    const { name } = validation;
 
     const lastCategory = await prisma.category.findFirst({
       orderBy: { order: "desc" },
@@ -22,16 +29,14 @@ router.post("/categories", async (req, res, next) => {
       .status(200)
       .json({ message: "카테고리를 등록 하였습니다.", data: createCategory });
   } catch (err) {
-    return res
-      .status(400)
-      .json({ errorMessage: "데이터 형식이 올바르지 않습니다." });
+    next(err)
   }
 });
 
 // 카테고리 목록 조회 API
 router.get("/categories", async (req, res, next) => {
   try {
-    const categorys = await prisma.category.findMany({
+    const categories = await prisma.category.findMany({
       select: {
         id: true,
         name: true,
@@ -39,42 +44,49 @@ router.get("/categories", async (req, res, next) => {
       },
       orderBy: [{ order: "desc" }],
     });
-    return res.status(200).json({ data: categorys });
+    return res.status(200).json({ data: categories });
   } catch (err) {
-    return res.status(400).json({ errorMessage: err.message });
+    next(err)
   }
 });
 
-// 카테고리별 정보 변경 API
+// 유효성 검사 및 에러 핸들링 추가.
+// 카테고리 수정 API
 router.patch("/categories/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, order } = req.body;
 
+    if (order === undefined || order === null) {
+      throw { name: "ValidationError" };
+    }
+
     const category = await prisma.category.findUnique({
       where: { id: +id },
     });
 
-    if (!category) {
-      return res
-        .status(404)
-        .json({ errorMessage: "존재하지 않는 카테고리입니다." });
-    }
+    if (!category) throw { name: "CastError" };
 
-    if (order !== undefined && order !== category.order) {
-      // order 값이 변경되고, 변경된 값이 현재의 값과 다를 때 중복 체크 수행
+    const updatedCategory = Joi.object({
+      name: Joi.string().min(1).max(50),
+      order: Joi.number().min(1).max(50).allow(null),
+    });
+
+    const validateBody = await updatedCategory.validateAsync(req.body);
+
+    // order가 null이 아니면서, 변경된 경우에 중복 체크 수행
+    if (validateBody.order !== null && order !== category.order) {
       const existingCategoryWithOrder = await prisma.category.findFirst({
         where: {
-          order: +order,
-          id: { not: +id }, // 현재 수정 중인 카테고리 제외
+          order: +validateBody.order,
+          id: { not: +id },
         },
       });
 
       if (existingCategoryWithOrder) {
-        // 중복된 order 값이 이미 존재하면 교환
         await prisma.category.updateMany({
           where: {
-            OR: [{ id: +id }, { order: +order }],
+            OR: [{ id: +id }, { order: +validateBody.order }],
           },
           data: {
             order: {
@@ -83,22 +95,28 @@ router.patch("/categories/:id", async (req, res, next) => {
           },
         });
       }
+    } else if (validateBody.order === null && order !== category.order) {
+      throw { name: "ValidationError" };
     }
 
-    const updatedCategory = await prisma.category.update({
+    const updatedData = {
+      name: validateBody.name !== null ? validateBody.name : category.name,
+      order: validateBody.order !== null ? validateBody.order : category.order,
+    };
+
+    const updatedCategoryResult = await prisma.category.update({
       where: { id: +id },
-      data: { name, order },
+      data: updatedData,
     });
 
     return res
       .status(200)
-      .json({ message: "수정에 성공했습니다.", data: updatedCategory });
+      .json({ message: "수정에 성공했습니다.", data: updatedCategoryResult });
   } catch (err) {
-    return res
-      .status(400)
-      .json({ errorMessage: "데이터 형식이 올바르지 않습니다." });
+    next(err);
   }
 });
+
 
 // 카테고리 삭제 API
 router.delete("/categories/:id", async (req, res, next) => {
@@ -108,21 +126,14 @@ router.delete("/categories/:id", async (req, res, next) => {
     const category = await prisma.category.findUnique({
       where: { id: +id },
     });
-    if (!category) {
-      return res
-        .status(404)
-        .json({ errorMessage: "존재 하지 않는 카테고리입니다." });
-    }
+    if (!category) throw { name: "CastError" }
     await prisma.category.delete({
       where: { id: +id },
     });
     return res.status(200).json({ message: "카테고리 정보를 삭제하였습니다." });
   } catch (err) {
-    return res
-      .status(400)
-      .json({ errorMessage: "데이터 형식이 올바르지 않습니다." });
+    next(err)
   }
 });
-
 
 export default router;
