@@ -1,11 +1,11 @@
-import express from "express";
-import Joi from "joi";
-import { prisma } from "../utils/prisma/index.js";
+import express from 'express';
+import Joi from 'joi';
+import { prisma } from '../utils/prisma/index.js';
 
 const router = express.Router();
 // 조이 유효성 검사 추가
 const schema = Joi.object({
-  name: Joi.string().min(2).max(20).required(),
+   name: Joi.string().min(2).max(20).required(),
 });
 
 // 조이를 통한 유효성 검사 및 에러 추가
@@ -93,31 +93,38 @@ router.patch("/categories/:categoryId", async (req, res, next) => {
             order: {
               set: category.order,
             },
-          },
-        });
+         });
+
+         if (existingCategoryWithOrder) {
+            await prisma.category.updateMany({
+               where: {
+                  OR: [{ id: +id }, { order: +validateBody.order }],
+               },
+               data: {
+                  order: {
+                     set: category.order,
+                  },
+               },
+            });
+         }
+      } else if (validateBody.order === null && order !== category.order) {
+         throw { name: 'ValidationError' };
       }
-    } else if (validateBody.order === null && order !== category.order) {
-      throw { name: "ValidationError" };
-    }
+      const updatedData = {
+         name: validateBody.name !== null ? validateBody.name : category.name,
+         order: validateBody.order !== null ? validateBody.order : category.order,
+      };
 
-    const updatedData = {
-      name: validateBody.name !== null ? validateBody.name : category.name,
-      order: validateBody.order !== null ? validateBody.order : category.order,
-    };
+      const updatedCategoryResult = await prisma.category.update({
+         where: { id: +id },
+         data: updatedData,
+      });
 
-    const updatedCategoryResult = await prisma.category.update({
-      where: { id: +categoryId },
-      data: updatedData,
-    });
-
-    return res
-      .status(200)
-      .json({ message: "수정에 성공했습니다.", data: updatedCategoryResult });
-  } catch (err) {
-    next(err);
-  }
+      return res.status(200).json({ message: '수정에 성공했습니다.', data: updatedCategoryResult });
+   } catch (err) {
+      next(err);
+   }
 });
-
 
 // 카테고리 삭제 API
 router.delete("/categories/:categoryId", async (req, res, next) => {
