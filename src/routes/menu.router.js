@@ -28,6 +28,8 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
       const { name, description, price } = validation;
       req.body.image = req.file.location;
 
+      if (!name || !description || !price) throw { name: 'ValidationError' };
+
       if (price < 0) {
          throw { name: 'LessThenZero' };
       }
@@ -127,24 +129,10 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
       const menu = await prisma.menu.findFirst({ where: { id: +menuId } });
       if (!menu) throw { name: 'menuCastError' };
 
-      // const bodySchema = Joi.object({
-      //    name: Joi.string().min(1).required(),
-      //    description: Joi.string().min(1).required(),
-      //    price: Joi.string().min(1).required(),
-      //    order: Joi.number().integer().required(),
-      //    status: Joi.string().valid('FOR_SALE', 'SOLD_OUT').required(),
-      // });
-
-      // //비동기적으로 처리 안함
-      // const validation = bodySchema.validate(req.body);
-      // if (validation.error) {
-      //    return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
-      // }
-
-      // const { name, description, price, order, status } = req.body;
-
       const validation = await menuSchema.validateAsync(req.body);
       const { name, description, price, order, status } = validation;
+
+      if (!name || !description || !price || !order || !status) throw { name: 'ValidationError' };
 
       if (price < 0) {
          throw { name: 'LessThenZero' };
