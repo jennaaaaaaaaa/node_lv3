@@ -5,6 +5,15 @@ import imageUploader from '../../assets/imageupload.js';
 
 const router = express.Router();
 
+const menuSchema = Joi.object({
+   name: Joi.string().min(1).required(),
+   description: Joi.string().min(1).required(),
+   image: Joi.string().min(1),
+   price: Joi.string().min(1).required(),
+   order: Joi.number().integer(),
+   status: Joi.string().valid('FOR_SALE', 'SOLD_OUT'),
+});
+
 //메뉴 등록
 router.post('/categories/:categoryId/menus', imageUploader.single('image'), async (req, res, next) => {
    try {
@@ -15,25 +24,27 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
          return res.status(404).json({ message: '존재하지 않는 카테고리입니다.' });
       }
 
-      const bodySchema = Joi.object({
-         name: Joi.string().min(1).required(),
-         description: Joi.string().min(1).required(),
-         image: Joi.string().min(1),
-         price: Joi.string().min(1).required(),
-      });
+      // const bodySchema = Joi.object({
+      //    name: Joi.string().min(1).required(),
+      //    description: Joi.string().min(1).required(),
+      //    image: Joi.string().min(1),
+      //    price: Joi.string().min(1).required(),
+      // });
 
       //비동기적으로 처리 안함
-      const validation = bodySchema.validate(req.body);
-      if (validation.error) {
-         console.log(validation.error.details);
-         return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
-      }
+      // const validation = bodySchema.validate(req.body);
+      // if (validation.error) {
+      //    console.log(validation.error.details);
+      //    return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
+      // }
 
-      // const { name, description, image, price } = req.body;
-      const { name, description, price } = req.body;
+      // const { name, description, price } = req.body;
+
+      const validation = await menuSchema.validateAsync(req.body);
+      const { name, description, price } = validation;
       req.body.image = req.file.location;
 
-      req.body.image = req.file ? req.file.location : null;
+      // req.body.image = req.file ? req.file.location : null;
 
       const lastOrder = await prisma.menu.findFirst({
          orderBy: {
@@ -61,8 +72,9 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
 
       return res.status(200).json({ menuInfo });
    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ errorMessage: '서버에서 애러가 발생했습니다.' });
+      next(error);
+      // console.error(error);
+      // return res.status(500).json({ errorMessage: '서버에서 애러가 발생했습니다.' });
    }
 });
 
@@ -78,6 +90,7 @@ router.get('/categories/:categoryId/menus', async (req, res, next) => {
       const category = await prisma.category.findFirst({ where: { id: +categoryId } });
 
       if (!category) {
+         console.error(error);
          return res.status(404).json({ message: '존재하지 않는 카테고리입니다.' });
       }
 
@@ -137,21 +150,24 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
          return res.status(404).json({ message: '존재하지 않는 메뉴입니다' });
       }
 
-      const bodySchema = Joi.object({
-         name: Joi.string().min(1).required(),
-         description: Joi.string().min(1).required(),
-         price: Joi.string().min(1).required(),
-         order: Joi.number().integer().required(),
-         status: Joi.string().valid('FOR_SALE', 'SOLD_OUT').required(),
-      });
+      // const bodySchema = Joi.object({
+      //    name: Joi.string().min(1).required(),
+      //    description: Joi.string().min(1).required(),
+      //    price: Joi.string().min(1).required(),
+      //    order: Joi.number().integer().required(),
+      //    status: Joi.string().valid('FOR_SALE', 'SOLD_OUT').required(),
+      // });
 
-      //비동기적으로 처리 안함
-      const validation = bodySchema.validate(req.body);
-      if (validation.error) {
-         return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
-      }
+      // //비동기적으로 처리 안함
+      // const validation = bodySchema.validate(req.body);
+      // if (validation.error) {
+      //    return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
+      // }
 
-      const { name, description, price, order, status } = req.body;
+      // const { name, description, price, order, status } = req.body;
+
+      const validation = await menuSchema.validateAsync(req.body);
+      const { name, description, price, order, status } = validation;
 
       if (price < 0) {
          return res.status(400).json({ message: '메뉴 가격은 0보다 작을 수 없습니다' });
@@ -169,7 +185,7 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
          });
       }
 
-      const updateMenu = await prisma.menu.update({
+      await prisma.menu.update({
          where: { id: +menuId },
          data: { name, description, price, order, status },
       });
