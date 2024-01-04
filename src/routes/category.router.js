@@ -6,6 +6,7 @@ const router = express.Router();
 // 조이 유효성 검사 추가
 const schema = Joi.object({
   name: Joi.string().min(2).max(20).required(),
+  order: Joi.number().max(50).required(),
 });
 
 // 조이를 통한 유효성 검사 및 에러 추가
@@ -68,12 +69,7 @@ router.patch("/categories/:categoryId", async (req, res, next) => {
     if (!categoryId) throw { name: "ValidationError" };
     if (!name || !order) throw { name: "ValidationError" }
 
-    const updatedCategory = Joi.object({
-      name: Joi.string().min(1).max(50),
-      order: Joi.number().max(50).allow(null),
-    });
-
-    const validateBody = await updatedCategory.validateAsync(req.body);
+    const validateBody = await schema.validateAsync(req.body);
 
     // order가 null이 아니면서, 변경된 경우에 중복 체크 수행
     if (validateBody.order !== null && order !== category.order) {
@@ -96,7 +92,7 @@ router.patch("/categories/:categoryId", async (req, res, next) => {
           },
         });
       }
-    } else if (validateBody.order === null && order !== category.order) {
+    } if (validateBody.order === null && order !== category.order) {
       throw { name: "ValidationError" };
     }
 
