@@ -15,8 +15,10 @@ router.post("/categories", async (req, res, next) => {
     const validation = await schema.validateAsync(req.body);
     const { name } = validation;
 
+    if (!name) {throw { name: "ValidationError" };
+  }
     const lastCategory = await prisma.category.findFirst({
-      orderBy: { order: "desc" },
+      orderBy: { order: "asc" },
     });
     const newOrder = lastCategory ? lastCategory.order + 1 : 1;
     const createCategory = await prisma.category.create({
@@ -42,7 +44,7 @@ router.get("/categories", async (req, res, next) => {
         name: true,
         order: true,
       },
-      orderBy: [{ order: "desc" }],
+      orderBy: [{ order: "asc" }],
     });
     return res.status(200).json({ data: categories });
   } catch (err) {
@@ -52,24 +54,23 @@ router.get("/categories", async (req, res, next) => {
 
 // 유효성 검사 및 에러 핸들링 추가.
 // 카테고리 수정 API
-router.patch("/categories/:id", async (req, res, next) => {
+router.patch("/categories/:categoryId", async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { categoryId } = req.params;
     const { name, order } = req.body;
 
-    if (order === undefined || order === null) {
-      throw { name: "ValidationError" };
+    if (order === undefined || order === null) {throw { name: "ValidationError" };
     }
-
     const category = await prisma.category.findUnique({
-      where: { id: +id },
+      where: { id: +categoryId },
     });
-
     if (!category) throw { name: "CastError" };
+    if (!categoryId) throw { name: "ValidationError" };
+    if (!name || !order) throw { name: "ValidationError" }
 
     const updatedCategory = Joi.object({
       name: Joi.string().min(1).max(50),
-      order: Joi.number().min(1).max(50).allow(null),
+      order: Joi.number().max(50).allow(null),
     });
 
     const validateBody = await updatedCategory.validateAsync(req.body);
@@ -79,14 +80,14 @@ router.patch("/categories/:id", async (req, res, next) => {
       const existingCategoryWithOrder = await prisma.category.findFirst({
         where: {
           order: +validateBody.order,
-          id: { not: +id },
+          id: { not: +categoryId },
         },
       });
 
       if (existingCategoryWithOrder) {
         await prisma.category.updateMany({
           where: {
-            OR: [{ id: +id }, { order: +validateBody.order }],
+            OR: [{ id: +categoryId }, { order: +validateBody.order }],
           },
           data: {
             order: {
@@ -105,7 +106,7 @@ router.patch("/categories/:id", async (req, res, next) => {
     };
 
     const updatedCategoryResult = await prisma.category.update({
-      where: { id: +id },
+      where: { id: +categoryId },
       data: updatedData,
     });
 
@@ -119,16 +120,17 @@ router.patch("/categories/:id", async (req, res, next) => {
 
 
 // 카테고리 삭제 API
-router.delete("/categories/:id", async (req, res, next) => {
+router.delete("/categories/:categoryId", async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { categoryId } = req.params;
 
     const category = await prisma.category.findUnique({
-      where: { id: +id },
+      where: { id: +categoryId },
     });
     if (!category) throw { name: "CastError" }
+    if (!categoryId) throw { name: "ValidationError" };
     await prisma.category.delete({
-      where: { id: +id },
+      where: { id: +categoryId },
     });
     return res.status(200).json({ message: "카테고리 정보를 삭제하였습니다." });
   } catch (err) {
