@@ -22,8 +22,8 @@ model Category {
 model Menu {
   id              Int      @id @default(autoincrement()) 
   category_id     Int      
-  name            String  
-  order           Int
+  name            String   
+  order           Int    
   description     String 
   image           String 
   price           String 
@@ -37,3 +37,4 @@ enum Menu_Status {
   FOR_SALE
   SOLD_OUT
 }
+
