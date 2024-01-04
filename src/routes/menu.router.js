@@ -34,7 +34,6 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
          throw { name: 'LessThenZero' };
       }
 
-      // req.body.image = req.file ? req.file.location : null;
 
       const lastOrder = await prisma.menu.findFirst({
          orderBy: {
@@ -51,7 +50,6 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
          data: {
             name,
             description,
-            // image,
             image: req.file.location,
             price,
             status: 'FOR_SALE',
@@ -63,8 +61,6 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
       return res.status(200).json({ message: '메뉴를 등록하였습니다' });
    } catch (error) {
       next(error);
-      // console.error(error);
-      // return res.status(500).json({ errorMessage: '서버에서 애러가 발생했습니다.' });
    }
 });
 
@@ -184,3 +180,4 @@ router.delete('/categories/:categoryId/menus/:menuId', async (req, res, next) =>
 });
 
 export default router;
+
