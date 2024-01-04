@@ -28,6 +28,8 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
       const { name, description, price } = validation;
       req.body.image = req.file.location;
 
+      if (!name || !description || !price) throw { name: 'ValidationError' };
+
       if (price < 0) {
          throw { name: 'LessThenZero' };
       }
@@ -125,6 +127,8 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
 
       const validation = await menuSchema.validateAsync(req.body);
       const { name, description, price, order, status } = validation;
+
+      if (!name || !description || !price || !order || !status) throw { name: 'ValidationError' };
 
       if (price < 0) {
          throw { name: 'LessThenZero' };
