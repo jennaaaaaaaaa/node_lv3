@@ -19,30 +19,18 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
    try {
       const { categoryId } = req.params;
 
+      if (categoryId === undefined) throw { name: 'ValidationError' };
+
       const category = await prisma.category.findFirst({ where: { id: +categoryId } });
-      if (!category) {
-         return res.status(404).json({ message: '존재하지 않는 카테고리입니다.' });
-      }
-
-      // const bodySchema = Joi.object({
-      //    name: Joi.string().min(1).required(),
-      //    description: Joi.string().min(1).required(),
-      //    image: Joi.string().min(1),
-      //    price: Joi.string().min(1).required(),
-      // });
-
-      //비동기적으로 처리 안함
-      // const validation = bodySchema.validate(req.body);
-      // if (validation.error) {
-      //    console.log(validation.error.details);
-      //    return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
-      // }
-
-      // const { name, description, price } = req.body;
+      if (!category) throw { name: 'CastError' };
 
       const validation = await menuSchema.validateAsync(req.body);
       const { name, description, price } = validation;
       req.body.image = req.file.location;
+
+      if (price < 0) {
+         throw { name: 'LessThenZero' };
+      }
 
       // req.body.image = req.file ? req.file.location : null;
 
@@ -57,7 +45,7 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
 
       const orderCheck = lastOrder ? lastOrder.order + 1 : 1;
 
-      const menuInfo = await prisma.menu.create({
+      await prisma.menu.create({
          data: {
             name,
             description,
@@ -70,7 +58,7 @@ router.post('/categories/:categoryId/menus', imageUploader.single('image'), asyn
          },
       });
 
-      return res.status(200).json({ menuInfo });
+      return res.status(200).json({ message: '메뉴를 등록하였습니다' });
    } catch (error) {
       next(error);
       // console.error(error);
@@ -83,22 +71,17 @@ router.get('/categories/:categoryId/menus', async (req, res, next) => {
    try {
       const { categoryId } = req.params;
 
-      if (!categoryId) {
-         return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
-      }
+      if (!categoryId) throw { name: 'ValidationError' };
 
       const category = await prisma.category.findFirst({ where: { id: +categoryId } });
 
-      if (!category) {
-         console.error(error);
-         return res.status(404).json({ message: '존재하지 않는 카테고리입니다.' });
-      }
+      if (!category) throw { name: 'CastError' };
 
       const menus = await prisma.menu.findMany({ where: { category_id: +categoryId } });
 
       return res.status(200).json({ menus });
    } catch (error) {
-      return res.status(500).json({ errorMessage: '서버에서 에러가 발생했습니다' });
+      next(error);
    }
 });
 
@@ -107,14 +90,12 @@ router.get('/categories/:categoryId/menus/:menuId', async (req, res, next) => {
    try {
       const { categoryId, menuId } = req.params;
       if (!categoryId || !menuId) {
-         return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
+         throw { name: 'ValidationError' };
       }
 
       const category = await prisma.category.findFirst({ where: { id: +categoryId } });
 
-      if (!category) {
-         return res.status(404).json({ message: '존재하지 않는 카테고리입니다' });
-      }
+      if (!category) throw { name: 'CastError' };
 
       const menu = await prisma.menu.findFirst({
          where: { id: +menuId },
@@ -131,7 +112,7 @@ router.get('/categories/:categoryId/menus/:menuId', async (req, res, next) => {
 
       return res.status(200).json({ data: menu });
    } catch (error) {
-      return res.status(500).json({ errorMessage: '서버에서 에러가 발생했습니다' });
+      next(error);
    }
 });
 
@@ -141,14 +122,10 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
       const { categoryId, menuId } = req.params;
 
       const category = await prisma.category.findFirst({ where: { id: +categoryId } });
-      if (!category) {
-         return res.status(404).json({ message: '존재하지 않는 카테고리입니다' });
-      }
+      if (!category) throw { name: 'CastError' };
 
       const menu = await prisma.menu.findFirst({ where: { id: +menuId } });
-      if (!menu) {
-         return res.status(404).json({ message: '존재하지 않는 메뉴입니다' });
-      }
+      if (!menu) throw { name: 'menuCastError' };
 
       // const bodySchema = Joi.object({
       //    name: Joi.string().min(1).required(),
@@ -170,7 +147,7 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
       const { name, description, price, order, status } = validation;
 
       if (price < 0) {
-         return res.status(400).json({ message: '메뉴 가격은 0보다 작을 수 없습니다' });
+         throw { name: 'LessThenZero' };
       }
 
       //body에 입력한 order값을 데이터베이스에서 이미 존재하는 값인지 찾음
@@ -191,7 +168,7 @@ router.patch('/categories/:categoryId/menus/:menuId', async (req, res, next) => 
       });
       return res.status(200).json({ message: '메뉴를 수정하였습니다.' });
    } catch (error) {
-      return res.status(500).json({ errorMessage: '서버에서 에러가 발생했습니다' });
+      next(error);
    }
 });
 
@@ -201,24 +178,20 @@ router.delete('/categories/:categoryId/menus/:menuId', async (req, res, next) =>
       const { categoryId, menuId } = req.params;
 
       if (!categoryId || !menuId) {
-         return res.status(400).json({ message: '데이터 형식이 올바르지 않습니다' });
+         throw { name: 'ValidationError' };
       }
 
       const category = await prisma.category.findFirst({ where: { id: +categoryId } });
-      if (!category) {
-         return res.status(404).json({ message: '존재하지 않는 카테고리입니다' });
-      }
+      if (!category) throw { name: 'CastError' };
 
       const menu = await prisma.menu.findFirst({ where: { id: +menuId } });
-      if (!menu) {
-         return res.status(404).json({ message: '존재하지 않는 메뉴입니다' });
-      }
+      if (!menu) throw { name: 'menuCastError' };
 
       await prisma.menu.delete({ where: { id: +menuId } });
 
       return res.status(200).json({ message: '메뉴를 삭제하였습니다' });
    } catch (error) {
-      return res.status(500).json({ errorMessage: '서버에서 에러가 발생했습니다' });
+      next(error);
    }
 });
 
